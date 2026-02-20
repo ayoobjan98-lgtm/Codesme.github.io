@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="fa">
+<head>
+<meta charset="UTF-8">
+<title>سیستم مدیریت دانش‌آموزان حرفه‌ای</title>
+<style>
+body { font-family: Arial, sans-serif; padding: 20px; background-color: #f0f0f0; direction: rtl; }
+h1 { text-align: center; color: #2c3e50; }
+input, button { padding: 5px; margin: 5px; }
+table { width: 95%; margin: 20px auto; border-collapse: collapse; background: #fff; }
+th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
+th { background-color: #3498db; color: white; cursor: pointer; }
+tr:nth-child(even) { background-color: #f2f2f2; }
+button { cursor: pointer; }
+#search { width: 200px; }
+</style>
+</head>
+<body>
+
+<h1>سیستم مدیریت دانش‌آموزان حرفه‌ای</h1>
+
+<div style="text-align:center;">
+    <input type="text" id="studentName" placeholder="نام دانش‌آموز">
+    <input type="number" id="grade" placeholder="نمره" min="0" max="20">
+    <button onclick="addStudent()">افزودن دانش‌آموز</button>
+    <button onclick="deleteStudent()">حذف دانش‌آموز</button>
+    <button onclick="addGrade()">افزودن نمره</button>
+    <input type="text" id="search" placeholder="جستجوی دانش‌آموز" onkeyup="filterTable()">
+</div>
+
+<table id="studentsTable">
+    <thead>
+        <tr>
+            <th onclick="sortTable(0)">نام</th>
+            <th>نمرات</th>
+            <th onclick="sortTable(2)">کمترین</th>
+            <th onclick="sortTable(3)">بیشترین</th>
+            <th onclick="sortTable(4)">معدل</th>
+            <th>وضعیت</th>
+        </tr>
+    </thead>
+    <tbody></tbody>
+</table>
+
+<script>
+let students = JSON.parse(localStorage.getItem('students')) || [];
+
+function saveData() {
+    localStorage.setItem('students', JSON.stringify(students));
+}
+
+function addStudent() {
+    const name = document.getElementById('studentName').value.trim();
+    if(!name) return alert("لطفاً نام وارد کنید");
+    if(students.some(s => s.name === name)) return alert("این دانش‌آموز قبلاً وجود دارد");
+    students.push({name: name, grades: []});
+    saveData();
+    updateTable();
+}
+
+function deleteStudent() {
+    const name = document.getElementById('studentName').value.trim();
+    students = students.filter(s => s.name !== name);
+    saveData();
+    updateTable();
+}
+
+function addGrade() {
+    const name = document.getElementById('studentName').value.trim();
+    const grade = parseFloat(document.getElementById('grade').value);
+    if(!name || isNaN(grade)) return alert("نام و نمره معتبر وارد کنید");
+    const student = students.find(s => s.name === name);
+    if(!student) return alert("دانش‌آموز پیدا نشد");
+    if(grade < 0 || grade > 20) return alert("نمره باید بین 0 تا 20 باشد");
+    student.grades.push(grade);
+    saveData();
+    updateTable();
+}
+
+function calculateAvg(grades) { return grades.length ? grades.reduce((a,b)=>a+b,0)/grades.length : null; }
+function getMin(grades){ return grades.length? Math.min(...grades): null;}
+function getMax(grades){ return grades.length? Math.max(...grades): null;}
+function getStatus(avg){ return avg === null ? "نمره‌ای ثبت نشده" : avg >=10 ? "قبول ✅" : "نیاز به تلاش بیشتر ❌"; }
+
+function updateTable() {
+    const tbody = document.querySelector('#studentsTable tbody');
+    tbody.innerHTML = '';
+    students.forEach(s => {
+        const avg = calculateAvg(s.grades);
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${s.name}</td>
+            <td>${s.grades.join(", ")}</td>
+            <td>${getMin(s.grades)}</td>
+            <td>${getMax(s.grades)}</td>
+            <td>${avg !== null ? avg.toFixed(2) : ''}</td>
+            <td>${getStatus(avg)}</td>
+        `;
+        tbody.appendChild(row);
+    });
+    filterTable(); // اعمال فیلتر بعد از هر آپدیت
+}
+
+function sortTable(colIndex) {
+    students.sort((a,b)=>{
+        let valA, valB;
+        if(colIndex===0){ valA=a.name.toLowerCase(); valB=b.name.toLowerCase(); return valA.localeCompare(valB);}
+        if(colIndex===2){ valA=getMin(a.grades)||0; valB=getMin(b.grades)||0;}
+        if(colIndex===3){ valA=getMax(a.grades)||0; valB=getMax(b.grades)||0;}
+        if(colIndex===4){ valA=calculateAvg(a.grades)||0; valB=calculateAvg(b.grades)||0;}
+        return valB - valA;
+    });
+    updateTable();
+}
+
+function filterTable() {
+    const filter = document.getElementById('search').value.toLowerCase();
+    const rows = document.querySelectorAll('#studentsTable tbody tr');
+    rows.forEach(row=>{
+        const name = row.cells[0].textContent.toLowerCase();
+        row.style.display = name.includes(filter) ? '' : 'none';
+    });
+}
+
+// بارگذاری اولیه جدول از LocalStorage
+updateTable();
+</script>
+
+</body>
+</html>
